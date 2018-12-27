@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>PaintMix</title>
+        <style type="text/css">
+        
+            html, body, #game {
+                height: 100%;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                position: relative;
+                max-width: 100vw;
+                max-height: 100vh;
+                overflow: hidden;
+            }
+            .background {
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100%;
+                width: 100%;
+                background-image: url('https://images.pexels.com/photos/1070534/pexels-photo-1070534.jpeg?auto=compress');
+                background-position: center center;
+                background-repeat: no-repeat;
+                background-size: cover;
+                filter: blur(4px);
+                z-index: 0;
+            }
+            #game:hover {
+                cursor: crosshair;
+            }
+            #launcher {
+                position: absolute;
+                bottom: 6px;
+                left: calc(50% - 40px);
+                width: 80px;
+                height: 80px;
+                background-image: url('arrow.png');
+                background-size: contain;
+                background-repeat: no-repeat;
+                background-position: center center;
+            }
+            .ball {
+                background-color: grey;
+                width: 40px;
+                height: 40px;
+                position: absolute;
+                border-radius: 50%;
+                transition: all 0.3s;
+                z-index: 1;
+                box-shadow: 2px 2px 4px rgba(255, 255, 255, 0.5);
+            }
+            .ball:after, #ball:after {
+                display: block;
+                position: absolute;
+                z-index: 2;
+                left: 0;
+                top: 0;
+                height: 100%;
+                width: 100%;
+                background-image: url('bubble.png');
+                background-size: 100% 100%;
+                background-position: center;
+                background-repeat: no-repeat;
+                content: '';
+                opacity: 0.5;
+            }
+            #ball {
+                width: 40px;
+                height: 40px;
+                position: absolute;
+                border-radius: 50%;
+                background-color: red;
+                bottom: 30px;
+                left: calc(50% - 20px);
+            }
+        
+        </style>
+    </head>
+    <body>
+
+        <div class="background">&nbsp;</div>
+
+        <div id="game">
+            <div id="launcher">&nbsp;</div>
+            <div id="ball">&nbsp;</div>
+        </div>
+
+        <!-- AFx -->
+        <audio id="shoot" src="pop.mp3" autostart="false"></audio>
+
+        <script type="text/javascript">
+
+            var COLOR = 'red'; // Stores the current color of the cannonball
+            var BALLSIZE = 40; // The ball size in pixels
+            var BALLMARGIN = 5; // Horizontal margin between balls
+            var COLS = Math.floor(getScreenWidth() / (BALLSIZE + BALLMARGIN)); // Max amount of ball columns
+            var ROWS = Math.floor((getScreenHeight() - BALLSIZE) / BALLSIZE); // Max amount of ball rows
+            var BALLS = Array.from({length: COLS * ROWS}); // Stores all the balls
+            var BALLHALFSIZE = BALLSIZE / 2; // Half the width of a ball
+            var ID = 0;
+
+            function getScreenHeight() {
+                var body = document.body;
+                var html = document.documentElement;
+                var height = Math.max(body.scrollHeight, body.offsetHeight, html.clientHeight, html.scrollHeight, html.offsetHeight);
+                return parseInt(height);
+            }
+
+            function getScreenWidth() {
+                var body = document.body;
+                var html = document.documentElement;
+                var width = Math.max(body.scrollWidth, body.offsetWidth, html.clientWidth, html.scrollWidth, html.offsetWidth);
+                return parseInt(width);
+            }
+
+            function ballIdInArray(ball, arr) {
+                for (var b = 0; b < arr.length; b++) {
+                    if (arr[b] && arr[b][1] == ball[1]) { return true; }
+                }
+                return false;
+            }
+
+            function addRow() {
+                // Add new row in model
+                // Add new row in view
+                // Test if row touches ground
+            }
+
+            function removeNeighbours(row, col) {
+
+                var neighbours = [];
+                neighbours.push(BALLS[row * COLS + col]);
+                var q = [];
+                var n = 0;
+                q.push([row, col]);
+
+
+                while (true) {
+
+                    if (n >= q.length) { break; }
+                    var oldLength = neighbours.length;
+
+                    var cRow = q[n][0];
+                    var cCol = q[n][1];
+
+                    // Even row
+                    if (cRow % 2 == 0) {
+                        var newNeighbours = [[cRow - 1, cCol - 1], [cRow, cCol - 1], [cRow + 1, cCol - 1], [cRow - 1, cCol], [cRow + 1, cCol], [cRow, cCol + 1]];
+                    }
+                    // Odd row
+                    else {
+                        var newNeighbours = [[cRow - 1, cCol], [cRow - 1, cCol + 1], [cRow, cCol - 1], [cRow, cCol + 1], [cRow + 1, cCol], [cRow + 1, cCol + 1]];
+                    }
+
+                    // Add found neighbours
+                    for (var neighbour = 0; neighbour < newNeighbours.length; neighbour++) {
+
+                        var ball = BALLS[newNeighbours[neighbour][0] * COLS + newNeighbours[neighbour][1]];                      
+                        
+                        // This is a neighbour which has not yet been inspected
+                        if (ball && ball[0] == COLOR && !ballIdInArray(ball, neighbours)) {
+                            neighbours.push(ball);
+                            q.push([newNeighbours[neighbour][0], newNeighbours[neighbour][1]]);
+                        }
+                    }
+
+                    if (oldLength == neighbours.lenght) {
+                        break; // No new neighbours added, found them all
+                    }
+                    n += 1;
+                }
+
+                for (var n = 0; n < neighbours.length; n++) {
+                    if (neighbours[n]) {
+                        document.getElementById(neighbours[n][1]).style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
+                    }
+                }
+
+                removeFloatingBubbles();
+
+            }
+
+            function removeFloatingBubbles() {
+
+                // Add first row, which always has support
+                var steady = [];
+                for (var i = 0; i < COLS; i++) {
+                    if (BALLS[i]) {
+                        steady.push([0, i]);
+                    }
+                }
+
+                // Find alle neighbouring bubbless
+
+                // Bubbles which are not added, have no support and must be deleted
+
+            }
+
+            function isCollided(xB, yB) {
+
+                if (isNaN(xB) || isNaN(yB)) { return false; }
+
+                var xA = 0;
+                var yA = 0;
+                var neighbour = null;
+
+                for (var row = 0; row < ROWS; row++) {
+
+                    if (row % 2 != 0) {
+                        xA = BALLHALFSIZE;
+                    }
+
+                    for (var col = 0; col < COLS; col++) {
+
+                        neighbour = BALLS[row * COLS + col];
+
+                        if (neighbour) {
+                                 
+                            if (Math.abs(xA - xB) <= BALLSIZE + BALLMARGIN && Math.abs(yA - yB) <= BALLSIZE + BALLMARGIN) {
+
+                                // The ball which the cannon landed on is the same color
+                                // Then the ball may be removed and the cannon can go further
+                                if (neighbour[0] == COLOR) {
+                                    document.getElementById(neighbour[1]).style.backgroundColor = 'yellow'; // Clear view
+                                    //BALLS[row * COLS + col] = null; // Clear model
+                                    removeNeighbours(row, col);
+                                    return false;
+                                }
+
+                                // The ball which the cannon landed on is another color, stop the ball
+                                else {
+
+                                    // Find closest grid place
+                                    var row = Math.floor(yB / BALLSIZE);
+                                    var yC = row * BALLSIZE;
+                                  
+                                    if (row % 2 != 0) {
+                                        var col = Math.round((xB - BALLHALFSIZE) / (BALLSIZE + BALLMARGIN));
+                                        var xC = BALLHALFSIZE + col * (BALLSIZE + BALLMARGIN);
+                                    }
+                                    else {
+                                        var col = Math.round(xB / (BALLSIZE + BALLMARGIN));
+                                        var xC = col * (BALLSIZE + BALLMARGIN);
+                                    }
+                                  
+                                    // Mix the colors
+                                    var newColor = 'purple';
+
+                                    // Rounded impact location
+                                    document.getElementById('game').innerHTML += '<div class="ball" id="' + ID + '" style="left:' + xC + 'px;top:' + yC + 'px;background-color:'+newColor+';">&nbsp;</div>'; // Update view
+                                    document.getElementById(neighbour[1]).style.backgroundColor = newColor; // Clear view
+                                    COLOR = newColor;
+
+                                    BALLS[row * COLS + col] = [newColor, ID]; // Update model
+                                    neighbour[0] = newColor;
+                                    
+                                    ID += 1; // Generate new ID
+                                    return true;
+                                }
+
+                                // Exact impact location
+                                document.getElementById('game').innerHTML += '<div class="ball" style="left:' + xB + 'px;top:' + yB + 'px;background-color:yellow;">&nbsp;</div>'; 
+
+                            }
+                        } 
+                        xA += BALLSIZE + BALLMARGIN;
+                    }
+                    yA += BALLSIZE;
+                    xA = 0;
+                }
+
+                return false;
+
+            }
+
+            function spawnBalls() {
+
+                var row = 0;
+                var col = 0;
+                var top = 0;
+                var bottom = 0;
+                var left = 0;
+
+                for (row = 0; row < 4; row++) { // ROWS
+
+                    if (row % 2 != 0) {
+                        left = BALLHALFSIZE;
+                    }
+
+                    for (col = 0; col < COLS; col++) {
+                        if (col == (COLS - 1)) { break; }
+                        c = COLOR;
+                        if (Math.random() > 0.5) {
+                            c = '#0047AB';
+                        }
+                        document.getElementById('game').innerHTML += '<div class="ball" id="' + ID + '" style="left:' + left + 'px;top:' + top + 'px;background-color:' + c + ';">&nbsp;</div>';  
+                        var cell = row * COLS + col;                    
+                        BALLS[cell] = [c, ID]; // Add top left coordinates of ball    
+                        left += BALLSIZE + BALLMARGIN;
+                        ID += 1;      
+                    }
+
+                    top += BALLSIZE;
+                    bottom = getScreenHeight() - top - BALLSIZE;
+                    left = 0;
+                }
+            }
+
+            function toRadians(angle) {
+              return angle * (Math.PI / 180);
+            }
+
+            function shoot() {
+
+                document.getElementById('shoot').play();
+                
+
+                // Get global variables
+                var angleC = angle;
+                var speed = 5; // 5 - 10
+                var cos = Math.cos(toRadians(angleC));
+                var sin = Math.sin(toRadians(angleC));
+                var ball = document.getElementById('ball');
+
+                var animation = setInterval(function() {
+
+                    // Get ball coordinates                    
+                    var style = window.getComputedStyle(ball);
+                    var bottom = parseFloat(style.getPropertyValue('bottom').slice(0, -2));
+                    var left = parseFloat(style.getPropertyValue('left').slice(0, -2));
+
+                    // Calc new ball coordinates
+                    left += parseFloat(cos * speed);
+                    bottom += parseFloat(sin * speed);
+
+                    // Collission with other balls
+                    if (isCollided(left, getScreenHeight() - bottom - BALLSIZE)) {
+                        clearInterval(animation); // Stop animation, ball is in top position
+                        bottom = 30;
+                        left = getScreenWidth() / 2 - 20;
+                    }
+
+                    // Collide with right wall
+                    if (left >= getScreenWidth() - BALLSIZE && cos > 0) {
+                        angleC = 180 - angleC;
+                        cos = Math.cos(toRadians(angleC));
+                        sin = Math.sin(toRadians(angleC));
+                    }
+
+                    // Collide with left wall
+                    if (left <= 0 && cos < 0) {
+                        angleC = 180 - angleC;
+                        cos = Math.cos(toRadians(angleC));
+                        sin = Math.sin(toRadians(angleC));
+                    }
+
+                    // If no hit, stop at top of game
+                    if (bottom > getScreenHeight() - BALLSIZE) {
+                        clearInterval(animation); // Stop animation, ball is in top position
+                        bottom = 30;
+                        left = getScreenWidth() / 2 - 20;
+                    }
+
+                    // Move ball to new position
+                    document.getElementById('ball').style.bottom = bottom + 'px';
+                    document.getElementById('ball').style.left = left + 'px';
+
+
+                }, 16);
+            }
+
+            function mouseMove(e) {
+                var mouseX = e.pageX - getScreenWidth() / 2;
+                var mouseY = getScreenHeight() - e.pageY - 40; // 40 is the heart distance from the launcher to the bottom of the screen: 40/2 + 20 = 40
+                var rad = Math.atan(mouseX / mouseY);
+                angle = rad * 57.2957795;
+                document.getElementById('launcher').style.transform = 'rotate('+angle+'deg)';
+                angle *= -1; // Transform to geometric circle around launcher point
+                angle += 90;
+                if (angle > 179) { angle = 179; }
+                if (angle < 1) { angle = 1; }
+            }
+
+            spawnBalls(); // Draw initial balls
+
+            function gameLoaded() {
+                console.log('Ready to play!');
+            }
+
+            document.addEventListener('DOMContentLoaded', gameLoaded, false); // Wait for DOM to load
+            document.addEventListener('mousemove', mouseMove); // Get mouse movement
+            document.getElementById('game').onclick = function() { // Get mouse click
+                shoot();
+            }
+
+          
+      </script>
+    </body>
+</html>
